@@ -3,17 +3,266 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>CINDER FALLS — Streets of the Canyon City</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  :root {
+    --ink: #fff;
+    --gold: #ffd21f;
+    --mint: #7dff9a;
+    --panel: rgba(0, 0, 0, .45);
+    --panel-soft: rgba(0, 0, 0, .55);
+    --panel-solid: rgba(0, 0, 0, .6);
+  }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #2a1408;
+    font-family: "Trebuchet MS", Verdana, sans-serif;
+  }
+  #game {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  #status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  #error-box {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 60;
+    display: none;
+    background: #a00;
+    color: var(--ink);
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    color: var(--ink);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+    z-index: 10;
+  }
+  #clock {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 15px;
+    letter-spacing: 2px;
+    font-weight: bold;
+  }
+  #wanted {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-size: 26px;
+    letter-spacing: 3px;
+  }
+  #cash {
+    position: absolute;
+    top: 42px;
+    right: 14px;
+    font-size: 22px;
+    font-weight: bold;
+    color: var(--mint);
+  }
+  #objective {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    max-width: 340px;
+    font-size: 15px;
+    background: var(--panel);
+    padding: 8px 10px;
+    border-left: 4px solid var(--gold);
+    border-radius: 3px;
+  }
+  #dialogue {
+    position: absolute;
+    bottom: 170px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 640px;
+    text-align: center;
+    font-size: 18px;
+    font-style: italic;
+    background: var(--panel-soft);
+    padding: 10px 16px;
+    border-radius: 6px;
+    display: none;
+  }
+  #toast {
+    position: absolute;
+    bottom: 230px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 17px;
+    font-weight: bold;
+    color: var(--gold);
+    background: var(--panel-soft);
+    padding: 8px 14px;
+    border-radius: 6px;
+    display: none;
+  }
+  #minimap {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    width: 168px;
+    height: 168px;
+    border: 3px solid rgba(255, 255, 255, .75);
+    border-radius: 50%;
+    background: #141c28;
+  }
+  #health-wrap { position: absolute; right: 14px; bottom: 14px; width: 190px; }
+  #health-label {
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 3px;
+    text-align: right;
+  }
+  #health-bar, #armor-bar {
+    height: 12px;
+    background: var(--panel-solid);
+    border: 1px solid var(--ink);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 3px;
+  }
+  #health-fill { height: 100%; width: 100%; background: #37e07a; }
+  #armor-fill { height: 100%; width: 0%; background: #39a7e6; }
+  #speed { font-size: 26px; font-weight: bold; text-align: right; margin-top: 4px; }
+  #station { font-size: 13px; text-align: right; color: var(--gold); }
+  #ammo { font-size: 13px; text-align: right; color: #ffb38a; }
+  #controls-hint {
+    position: absolute;
+    right: 14px;
+    bottom: 130px;
+    font-size: 12px;
+    text-align: right;
+    opacity: .85;
+  }
+  /* ---------- Screens ---------- */
+  .screen {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--ink);
+    background: linear-gradient(180deg, rgba(40, 12, 4, .25) 0%, rgba(40, 12, 4, .78) 100%);
+    cursor: pointer;
+  }
+  .screen h1 {
+    margin: 0;
+    font-size: 64px;
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 4px 0 #a33, 0 8px 24px rgba(0, 0, 0, .7);
+    font-style: italic;
+  }
+  .screen h2 {
+    margin: 6px 0 0;
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: #ffb38a;
+    font-weight: normal;
+  }
+  .screen p { max-width: 560px; font-size: 16px; line-height: 1.55; margin: 18px 0 6px; }
+  .screen .keys {
+    font-size: 14px;
+    line-height: 1.9;
+    background: var(--panel-solid);
+    padding: 12px 22px;
+    border-radius: 8px;
+    margin-top: 14px;
+  }
+  .screen .cta {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--mint);
+    animation: blink 1.2s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+  #screen-pause h1 { font-size: 48px; }
 </style>
+<script src="./vendor/three.min.js"></script>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Cinder Falls: open-world crime game in a desert canyon city"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+<div id="error-box"></div>
+
+<div id="hud">
+  <div id="clock">17:24 CINDER FALLS</div>
+  <div id="wanted">☆☆☆☆☆</div>
+  <div id="cash">$150</div>
+  <div id="objective">Free roam — press M for the next job</div>
+  <div id="dialogue"></div>
+  <div id="toast"></div>
+  <canvas id="minimap" width="168" height="168"></canvas>
+  <div id="health-wrap">
+    <div id="health-label">HEALTH</div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="armor-bar"><div id="armor-fill"></div></div>
+    <div id="station">♪ DESERT FM 99.1</div>
+    <div id="ammo"></div>
+    <div id="speed"></div>
+  </div>
+  <div id="controls-hint">WASD move / drive &nbsp;·&nbsp; E enter car / shop &nbsp;·&nbsp; F punch &nbsp;·&nbsp; G shoot<br>
+    H horn &nbsp;·&nbsp; Q/R radio &nbsp;·&nbsp; M mission &nbsp;·&nbsp; P pause &nbsp;·&nbsp; N mute &nbsp;·&nbsp; drag mouse: camera</div>
+</div>
+
+<div class="screen" id="screen-start" style="display:flex">
+  <h1>CINDER FALLS</h1>
+  <h2>STREETS OF THE CANYON CITY</h2>
+  <p>Dana Cole is back in Cinder Falls — a sun-baked canyon town of glass
+    towers, neon casinos, trailer parks and one long bridge over the
+    river. Her brother's debt is due. Run eight jobs for Eddie Voss,
+    outdrive the Cinder Falls PD, steal what you need, and take the Big
+    Score. The whole town is yours: on foot or behind the wheel.</p>
+  <div class="keys">
+    WASD — walk / drive &nbsp;·&nbsp; SHIFT — run<br>
+    E — steal / enter / exit a car, use a shop &nbsp;·&nbsp; F — punch &nbsp;·&nbsp; G — shoot<br>
+    H — horn &nbsp;·&nbsp; Q/R — radio &nbsp;·&nbsp; M — next mission &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; N — mute &nbsp;·&nbsp; drag mouse — camera
+  </div>
+  <div class="cta">PRESS ENTER OR CLICK TO PLAY</div>
+</div>
+
+<div class="screen" id="screen-pause">
+  <h1>PAUSED</h1>
+  <p>Cinder Falls waits for no one — except right now.</p>
+  <div class="cta">PRESS P TO KEEP PLAYING</div>
+</div>
+
+<div class="screen" id="screen-over">
+  <h1>BUSTED!</h1>
+  <p>The Cinder Falls PD finally caught up with Dana. Your cash and mission
+    progress are saved — get back out there and finish the job.</p>
+  <p id="final-stats"></p>
+  <div class="cta">PRESS ENTER OR CLICK TO PLAY AGAIN</div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
